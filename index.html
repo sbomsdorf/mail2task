@@ -1,0 +1,890 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    />
+    <title>Mail2Task</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        padding: var(--s3, 24px);
+        background: var(--bg, #fafafa);
+        color: var(--text-color, #222);
+        font-family: var(--font-primary-stack, system-ui, sans-serif);
+      }
+
+      .shell {
+        max-width: 980px;
+        margin: 0 auto;
+        display: grid;
+        gap: var(--s3, 24px);
+      }
+
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--s2, 16px);
+      }
+
+      h1,
+      h2 {
+        margin: 0;
+        letter-spacing: 0;
+      }
+
+      h1 {
+        font-size: 1.5rem;
+        font-weight: 650;
+      }
+
+      h2 {
+        font-size: 1rem;
+        font-weight: 650;
+      }
+
+      .status-pill {
+        min-width: 9rem;
+        border: 1px solid var(--divider-color, #ddd);
+        border-radius: 999px;
+        padding: 0.4rem 0.7rem;
+        text-align: center;
+        font-size: 0.85rem;
+        color: var(--text-color-muted, #666);
+        background: var(--card-bg, #fff);
+      }
+
+      .panel {
+        display: grid;
+        gap: var(--s2, 16px);
+        border: 1px solid var(--divider-color, #ddd);
+        border-radius: 8px;
+        padding: var(--s3, 24px);
+        background: var(--card-bg, #fff);
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: var(--s2, 16px);
+      }
+
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: var(--s2, 16px);
+      }
+
+      label {
+        display: grid;
+        gap: 0.35rem;
+        font-size: 0.88rem;
+        color: var(--text-color-muted, #666);
+      }
+
+      input,
+      select {
+        width: 100%;
+        min-height: 2.55rem;
+      }
+
+      .check-row {
+        display: flex;
+        align-items: center;
+        gap: 0.55rem;
+        min-height: 2.1rem;
+        color: var(--text-color, #222);
+      }
+
+      .check-row input {
+        width: auto;
+        min-height: 0;
+      }
+
+      .toggle-list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.45rem var(--s2, 16px);
+      }
+
+      .tag-list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.35rem var(--s2, 16px);
+        max-height: 12rem;
+        overflow: auto;
+        border: 1px solid var(--divider-color, #ddd);
+        border-radius: 6px;
+        padding: var(--s, 8px);
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--s, 8px);
+      }
+
+      .status-box {
+        display: grid;
+        gap: 0.35rem;
+        border: 1px solid var(--divider-color, #ddd);
+        border-radius: 6px;
+        padding: var(--s2, 16px);
+        background: var(--bg, #fafafa);
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 0.82rem;
+        line-height: 1.45;
+      }
+
+      .muted {
+        color: var(--text-color-muted, #666);
+      }
+
+      .hidden {
+        display: none !important;
+      }
+
+      @media (max-width: 760px) {
+        body {
+          padding: var(--s2, 16px);
+        }
+
+        header,
+        .grid,
+        .grid-3,
+        .toggle-list,
+        .tag-list {
+          grid-template-columns: 1fr;
+        }
+
+        header {
+          align-items: stretch;
+          display: grid;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell page-fade">
+      <header>
+        <h1>Mail2Task</h1>
+        <div
+          id="statusPill"
+          class="status-pill"
+        >
+          wird geladen
+        </div>
+      </header>
+
+      <section class="panel">
+        <h2>IMAP</h2>
+        <label class="check-row">
+          <input
+            id="enabled"
+            type="checkbox"
+          />
+          Polling aktiv
+        </label>
+        <div class="grid">
+          <label>
+            Host
+            <input
+              id="host"
+              autocomplete="off"
+              placeholder="imap.example.org"
+            />
+          </label>
+          <label>
+            Port
+            <input
+              id="port"
+              type="number"
+              min="1"
+              max="65535"
+              value="993"
+            />
+          </label>
+          <label>
+            Username
+            <input
+              id="username"
+              autocomplete="username"
+            />
+          </label>
+          <label>
+            Mailbox
+            <input
+              id="mailbox"
+              value="INBOX"
+            />
+          </label>
+        </div>
+        <label class="check-row">
+          <input
+            id="tls"
+            type="checkbox"
+            checked
+          />
+          TLS verwenden
+        </label>
+        <div class="grid">
+          <label>
+            Passwort / App-Passwort
+            <input
+              id="password"
+              type="password"
+              autocomplete="current-password"
+            />
+          </label>
+          <div class="actions">
+            <button
+              id="savePassword"
+              type="button"
+              class="btn-primary"
+            >
+              Passwort speichern
+            </button>
+            <button
+              id="deletePassword"
+              type="button"
+            >
+              Passwort loeschen
+            </button>
+          </div>
+        </div>
+        <p
+          id="secretState"
+          class="muted"
+        ></p>
+      </section>
+
+      <section class="panel">
+        <h2>Verarbeitung</h2>
+        <div class="grid-3">
+          <label>
+            Polling-Minuten
+            <input
+              id="pollIntervalMinutes"
+              type="number"
+              min="1"
+              max="1440"
+            />
+          </label>
+          <label>
+            Mails pro Lauf
+            <input
+              id="maxMessagesPerPoll"
+              type="number"
+              min="1"
+              max="50"
+            />
+          </label>
+          <label>
+            Body-Zeichen
+            <input
+              id="bodyMaxChars"
+              type="number"
+              min="500"
+              max="50000"
+            />
+          </label>
+          <label>
+            Erster Lauf
+            <select id="firstRunMode">
+              <option value="newOnly">nur neue Mails ab jetzt</option>
+              <option value="latestN">letzte N Mails importieren</option>
+            </select>
+          </label>
+          <label>
+            N fuer ersten Lauf
+            <input
+              id="importLatestCount"
+              type="number"
+              min="1"
+              max="50"
+            />
+          </label>
+          <label>
+            Aufwand in Minuten
+            <input
+              id="timeEstimateMinutes"
+              type="number"
+              min="0"
+              max="1440"
+            />
+          </label>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Task-Ziel</h2>
+        <label>
+          Projekt
+          <select id="projectId"></select>
+        </label>
+        <div>
+          <div class="muted">Tags</div>
+          <div
+            id="tagList"
+            class="tag-list"
+          ></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Metadata in Notes</h2>
+        <div class="toggle-list">
+          <label class="check-row">
+            <input
+              type="checkbox"
+              data-meta="received"
+            />
+            Empfangsdatum
+          </label>
+          <label class="check-row">
+            <input
+              type="checkbox"
+              data-meta="from"
+            />
+            From
+          </label>
+          <label class="check-row">
+            <input
+              type="checkbox"
+              data-meta="to"
+            />
+            To
+          </label>
+          <label class="check-row">
+            <input
+              type="checkbox"
+              data-meta="cc"
+            />
+            Cc
+          </label>
+          <label class="check-row">
+            <input
+              type="checkbox"
+              data-meta="originalSubject"
+            />
+            Original-Subject
+          </label>
+          <label class="check-row">
+            <input
+              type="checkbox"
+              data-meta="messageId"
+            />
+            Message-ID
+          </label>
+          <label class="check-row">
+            <input
+              type="checkbox"
+              data-meta="mailbox"
+            />
+            IMAP-Mailbox
+          </label>
+          <label class="check-row">
+            <input
+              type="checkbox"
+              data-meta="imapUid"
+            />
+            UIDVALIDITY / UID
+          </label>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Status</h2>
+        <div class="actions">
+          <button
+            id="saveConfig"
+            type="button"
+            class="btn-primary"
+          >
+            Speichern
+          </button>
+          <button
+            id="testConnection"
+            type="button"
+          >
+            Verbindung testen
+          </button>
+          <button
+            id="runNow"
+            type="button"
+          >
+            Jetzt pruefen
+          </button>
+          <button
+            id="refresh"
+            type="button"
+          >
+            Aktualisieren
+          </button>
+        </div>
+        <div
+          id="statusBox"
+          class="status-box"
+        ></div>
+      </section>
+    </main>
+
+    <script>
+      (function () {
+        'use strict';
+
+        const SECRET_KEY = 'imapPassword';
+        const DEFAULT_METADATA_FIELDS = {
+          received: true,
+          from: true,
+          to: true,
+          cc: false,
+          originalSubject: true,
+          messageId: true,
+          mailbox: false,
+          imapUid: false,
+        };
+        const DEFAULT_CONFIG = {
+          enabled: false,
+          host: '',
+          port: 993,
+          tls: true,
+          username: '',
+          mailbox: 'INBOX',
+          pollIntervalMinutes: 5,
+          maxMessagesPerPoll: 10,
+          bodyMaxChars: 4000,
+          firstRunMode: 'newOnly',
+          importLatestCount: 10,
+          projectId: null,
+          tagIds: [],
+          timeEstimateMinutes: 0,
+          metadataFields: DEFAULT_METADATA_FIELDS,
+        };
+
+        const el = {
+          statusPill: document.getElementById('statusPill'),
+          statusBox: document.getElementById('statusBox'),
+          secretState: document.getElementById('secretState'),
+          enabled: document.getElementById('enabled'),
+          host: document.getElementById('host'),
+          port: document.getElementById('port'),
+          tls: document.getElementById('tls'),
+          username: document.getElementById('username'),
+          mailbox: document.getElementById('mailbox'),
+          password: document.getElementById('password'),
+          savePassword: document.getElementById('savePassword'),
+          deletePassword: document.getElementById('deletePassword'),
+          pollIntervalMinutes: document.getElementById('pollIntervalMinutes'),
+          maxMessagesPerPoll: document.getElementById('maxMessagesPerPoll'),
+          bodyMaxChars: document.getElementById('bodyMaxChars'),
+          firstRunMode: document.getElementById('firstRunMode'),
+          importLatestCount: document.getElementById('importLatestCount'),
+          timeEstimateMinutes: document.getElementById('timeEstimateMinutes'),
+          projectId: document.getElementById('projectId'),
+          tagList: document.getElementById('tagList'),
+          saveConfig: document.getElementById('saveConfig'),
+          testConnection: document.getElementById('testConnection'),
+          runNow: document.getElementById('runNow'),
+          refresh: document.getElementById('refresh'),
+        };
+
+        let currentStore = null;
+
+        function clone(value) {
+          return JSON.parse(JSON.stringify(value));
+        }
+
+        function parseJson(value, fallback) {
+          if (!value) {
+            return clone(fallback);
+          }
+          try {
+            return JSON.parse(value);
+          } catch (_error) {
+            return clone(fallback);
+          }
+        }
+
+        function clampNumber(value, min, max, fallback) {
+          const number = Number(value);
+          if (!Number.isFinite(number)) {
+            return fallback;
+          }
+          return Math.max(min, Math.min(max, Math.round(number)));
+        }
+
+        function normalizeConfig(config) {
+          const source = config && typeof config === 'object' ? config : {};
+          const merged = {
+            ...clone(DEFAULT_CONFIG),
+            ...source,
+            metadataFields: {
+              ...clone(DEFAULT_METADATA_FIELDS),
+              ...(source.metadataFields || {}),
+            },
+          };
+          merged.host = String(merged.host || '').trim();
+          merged.username = String(merged.username || '').trim();
+          merged.mailbox = String(merged.mailbox || 'INBOX').trim() || 'INBOX';
+          merged.port = clampNumber(merged.port, 1, 65535, merged.tls ? 993 : 143);
+          merged.pollIntervalMinutes = clampNumber(
+            merged.pollIntervalMinutes,
+            1,
+            1440,
+            5,
+          );
+          merged.maxMessagesPerPoll = clampNumber(merged.maxMessagesPerPoll, 1, 50, 10);
+          merged.bodyMaxChars = clampNumber(merged.bodyMaxChars, 500, 50000, 4000);
+          merged.importLatestCount = clampNumber(merged.importLatestCount, 1, 50, 10);
+          merged.timeEstimateMinutes = clampNumber(
+            merged.timeEstimateMinutes,
+            0,
+            1440,
+            0,
+          );
+          merged.firstRunMode =
+            merged.firstRunMode === 'latestN' ? 'latestN' : 'newOnly';
+          merged.projectId = merged.projectId || null;
+          merged.tagIds = Array.isArray(merged.tagIds)
+            ? merged.tagIds.filter(Boolean)
+            : [];
+          merged.tls = merged.tls !== false;
+          merged.enabled = merged.enabled === true;
+          return merged;
+        }
+
+        function normalizeStore(store) {
+          const source = store && typeof store === 'object' ? store : {};
+          const state = source.state && typeof source.state === 'object' ? source.state : {};
+          return {
+            config: normalizeConfig(source.config),
+            state: {
+              cursors:
+                state.cursors && typeof state.cursors === 'object' ? state.cursors : {},
+              processed:
+                state.processed && typeof state.processed === 'object'
+                  ? state.processed
+                  : {},
+              lastPollAt: state.lastPollAt || null,
+              lastSuccessAt: state.lastSuccessAt || null,
+              lastErrorAt: state.lastErrorAt || null,
+              lastError: state.lastError || null,
+              lastResult: state.lastResult || null,
+            },
+            command:
+              source.command && typeof source.command === 'object'
+                ? source.command
+                : null,
+          };
+        }
+
+        async function loadStore() {
+          const raw = await PluginAPI.loadSyncedData();
+          return normalizeStore(parseJson(raw, { config: DEFAULT_CONFIG, state: {} }));
+        }
+
+        async function saveStore(store) {
+          currentStore = normalizeStore(store);
+          await PluginAPI.persistDataSynced(JSON.stringify(currentStore));
+        }
+
+        async function updateStore(mutator) {
+          const latest = await loadStore();
+          mutator(latest);
+          await saveStore(latest);
+          return latest;
+        }
+
+        function applyConfig(config) {
+          el.enabled.checked = config.enabled;
+          el.host.value = config.host;
+          el.port.value = config.port;
+          el.tls.checked = config.tls;
+          el.username.value = config.username;
+          el.mailbox.value = config.mailbox;
+          el.pollIntervalMinutes.value = config.pollIntervalMinutes;
+          el.maxMessagesPerPoll.value = config.maxMessagesPerPoll;
+          el.bodyMaxChars.value = config.bodyMaxChars;
+          el.firstRunMode.value = config.firstRunMode;
+          el.importLatestCount.value = config.importLatestCount;
+          el.timeEstimateMinutes.value = config.timeEstimateMinutes;
+          el.projectId.value = config.projectId || '';
+          for (const checkbox of document.querySelectorAll('[data-meta]')) {
+            checkbox.checked = config.metadataFields[checkbox.dataset.meta] === true;
+          }
+          for (const checkbox of document.querySelectorAll('[data-tag]')) {
+            checkbox.checked = config.tagIds.includes(checkbox.dataset.tag);
+          }
+        }
+
+        function collectConfig() {
+          const metadataFields = {};
+          for (const checkbox of document.querySelectorAll('[data-meta]')) {
+            metadataFields[checkbox.dataset.meta] = checkbox.checked;
+          }
+          const tagIds = Array.from(document.querySelectorAll('[data-tag]:checked')).map(
+            (checkbox) => checkbox.dataset.tag,
+          );
+          return normalizeConfig({
+            enabled: el.enabled.checked,
+            host: el.host.value,
+            port: el.port.value,
+            tls: el.tls.checked,
+            username: el.username.value,
+            mailbox: el.mailbox.value,
+            pollIntervalMinutes: el.pollIntervalMinutes.value,
+            maxMessagesPerPoll: el.maxMessagesPerPoll.value,
+            bodyMaxChars: el.bodyMaxChars.value,
+            firstRunMode: el.firstRunMode.value,
+            importLatestCount: el.importLatestCount.value,
+            projectId: el.projectId.value || null,
+            tagIds,
+            timeEstimateMinutes: el.timeEstimateMinutes.value,
+            metadataFields,
+          });
+        }
+
+        async function saveConfig(options = {}) {
+          await updateStore((store) => {
+            store.config = collectConfig();
+          });
+          if (!options.silent) {
+            snack('Konfiguration gespeichert', 'SUCCESS');
+          }
+          await renderStatus();
+        }
+
+        async function savePassword() {
+          if (typeof PluginAPI.setSecret !== 'function') {
+            snack('Secret API ist in diesem Build nicht verfuegbar', 'ERROR');
+            return;
+          }
+          const password = el.password.value;
+          if (!password) {
+            snack('Passwortfeld ist leer', 'WARNING');
+            return;
+          }
+          await PluginAPI.setSecret(SECRET_KEY, password);
+          el.password.value = '';
+          await renderSecretState();
+          snack('Passwort lokal gespeichert', 'SUCCESS');
+        }
+
+        async function deletePassword() {
+          if (typeof PluginAPI.deleteSecret !== 'function') {
+            snack('Secret API ist in diesem Build nicht verfuegbar', 'ERROR');
+            return;
+          }
+          await PluginAPI.deleteSecret(SECRET_KEY);
+          el.password.value = '';
+          await renderSecretState();
+          snack('Passwort geloescht', 'SUCCESS');
+        }
+
+        async function queueCommand(type) {
+          await updateStore((store) => {
+            store.config = collectConfig();
+            store.command = {
+              id: String(Date.now()) + '-' + Math.random().toString(36).slice(2),
+              type,
+              status: 'pending',
+              requestedAt: new Date().toISOString(),
+            };
+          });
+          await renderStatus();
+          snack(type === 'testConnection' ? 'Test gestartet' : 'Pruefung gestartet', 'INFO');
+        }
+
+        async function renderProjectsAndTags() {
+          const [projects, tags] = await Promise.all([
+            PluginAPI.getAllProjects().catch(() => []),
+            PluginAPI.getAllTags().catch(() => []),
+          ]);
+
+          el.projectId.textContent = '';
+          const emptyProject = document.createElement('option');
+          emptyProject.value = '';
+          emptyProject.textContent = 'Kein Projekt';
+          el.projectId.appendChild(emptyProject);
+          projects
+            .slice()
+            .sort((a, b) => String(a.title).localeCompare(String(b.title)))
+            .forEach((project) => {
+              const option = document.createElement('option');
+              option.value = project.id;
+              option.textContent = project.title || project.id;
+              el.projectId.appendChild(option);
+            });
+
+          el.tagList.textContent = '';
+          const sortedTags = tags
+            .slice()
+            .sort((a, b) => String(a.title).localeCompare(String(b.title)));
+          if (!sortedTags.length) {
+            const empty = document.createElement('div');
+            empty.className = 'muted';
+            empty.textContent = 'Keine Tags vorhanden';
+            el.tagList.appendChild(empty);
+          }
+          sortedTags.forEach((tag) => {
+            const label = document.createElement('label');
+            label.className = 'check-row';
+            const input = document.createElement('input');
+            input.type = 'checkbox';
+            input.dataset.tag = tag.id;
+            const text = document.createTextNode(tag.title || tag.id);
+            label.appendChild(input);
+            label.appendChild(text);
+            el.tagList.appendChild(label);
+          });
+        }
+
+        async function renderSecretState() {
+          if (typeof PluginAPI.getSecret !== 'function') {
+            el.secretState.textContent =
+              'Secret API nicht verfuegbar. Zielbuild mit setSecret/getSecret benoetigt.';
+            el.statusPill.textContent = 'Secret API fehlt';
+            return;
+          }
+          try {
+            const password = await PluginAPI.getSecret(SECRET_KEY);
+            el.secretState.textContent = password
+              ? 'Passwort ist lokal auf diesem Geraet gespeichert.'
+              : 'Kein Passwort auf diesem Geraet gespeichert.';
+            el.password.placeholder = password ? 'gespeichert' : '';
+          } catch (error) {
+            el.secretState.textContent = readableError(error);
+          }
+        }
+
+        async function renderStatus() {
+          const store = await loadStore();
+          currentStore = store;
+          const state = store.state;
+          const command = store.command;
+          const lines = [];
+
+          lines.push('Polling: ' + (store.config.enabled ? 'aktiv' : 'aus'));
+          lines.push('Mailbox: ' + (store.config.mailbox || 'INBOX'));
+          lines.push('Letzter Lauf: ' + formatDate(state.lastPollAt));
+          lines.push('Letzter Erfolg: ' + formatDate(state.lastSuccessAt));
+          lines.push('Letzter Fehler: ' + (state.lastError || '-'));
+          if (state.lastResult) {
+            lines.push('');
+            lines.push('Letztes Ergebnis:');
+            lines.push(JSON.stringify(state.lastResult, null, 2));
+          }
+          if (command) {
+            lines.push('');
+            lines.push('Kommando:');
+            lines.push(JSON.stringify(command, null, 2));
+          }
+          lines.push('');
+          lines.push('Dedupe-Records: ' + Object.keys(state.processed).length);
+          lines.push('Cursor: ' + Object.keys(state.cursors).length);
+
+          el.statusBox.textContent = lines.join('\n');
+          if (command && (command.status === 'pending' || command.status === 'running')) {
+            el.statusPill.textContent = command.status === 'pending' ? 'wartet' : 'laeuft';
+          } else if (state.lastError) {
+            el.statusPill.textContent = 'Fehler';
+          } else if (store.config.enabled) {
+            el.statusPill.textContent = 'aktiv';
+          } else {
+            el.statusPill.textContent = 'bereit';
+          }
+        }
+
+        function formatDate(value) {
+          if (!value) {
+            return '-';
+          }
+          const date = new Date(value);
+          if (Number.isNaN(date.getTime())) {
+            return String(value);
+          }
+          return date.toLocaleString();
+        }
+
+        function readableError(error) {
+          return error && error.message ? error.message : String(error || 'Unknown error');
+        }
+
+        function snack(msg, type) {
+          PluginAPI.showSnack({ msg, type });
+        }
+
+        async function init() {
+          await renderProjectsAndTags();
+          currentStore = await loadStore();
+          applyConfig(currentStore.config);
+          await renderSecretState();
+          await renderStatus();
+
+          el.saveConfig.addEventListener('click', () => {
+            saveConfig().catch((error) => snack(readableError(error), 'ERROR'));
+          });
+          el.savePassword.addEventListener('click', () => {
+            savePassword().catch((error) => snack(readableError(error), 'ERROR'));
+          });
+          el.deletePassword.addEventListener('click', () => {
+            deletePassword().catch((error) => snack(readableError(error), 'ERROR'));
+          });
+          el.testConnection.addEventListener('click', () => {
+            queueCommand('testConnection').catch((error) => snack(readableError(error), 'ERROR'));
+          });
+          el.runNow.addEventListener('click', () => {
+            queueCommand('runNow').catch((error) => snack(readableError(error), 'ERROR'));
+          });
+          el.refresh.addEventListener('click', () => {
+            renderStatus().catch((error) => snack(readableError(error), 'ERROR'));
+          });
+
+          if (PluginAPI.Hooks && PluginAPI.Hooks.PERSISTED_DATA_CHANGED) {
+            PluginAPI.registerHook(PluginAPI.Hooks.PERSISTED_DATA_CHANGED, async () => {
+              const previousConfig = JSON.stringify(currentStore ? currentStore.config : null);
+              currentStore = await loadStore();
+              if (JSON.stringify(currentStore.config) !== previousConfig) {
+                applyConfig(currentStore.config);
+              }
+              await renderStatus();
+            });
+          }
+
+          setInterval(() => {
+            renderStatus().catch(() => undefined);
+          }, 3000);
+        }
+
+        const ready =
+          typeof PluginAPI !== 'undefined' && typeof PluginAPI.onReady === 'function'
+            ? PluginAPI.onReady.bind(PluginAPI)
+            : null;
+
+        if (ready) {
+          ready(() => {
+            init().catch((error) => snack(readableError(error), 'ERROR'));
+          });
+        } else {
+          document.addEventListener('DOMContentLoaded', () => {
+            init().catch((error) => snack(readableError(error), 'ERROR'));
+          });
+        }
+      })();
+    </script>
+  </body>
+</html>

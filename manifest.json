@@ -1,0 +1,30 @@
+{
+  "id": "mail2task",
+  "name": "Mail2Task",
+  "version": "0.1.0",
+  "description": "Creates Super Productivity tasks from new IMAP emails.",
+  "manifestVersion": 1,
+  "minSupVersion": "14.0.2",
+  "author": "Mail2Task contributors",
+  "homepage": "https://github.com/stefanbomsdorf/mail2task",
+  "icon": "icon.svg",
+  "iFrame": true,
+  "sidePanel": true,
+  "permissions": [
+    "nodeExecution",
+    "addTask",
+    "getAllProjects",
+    "getAllTags",
+    "loadSyncedData",
+    "persistDataSynced",
+    "setSecret",
+    "getSecret",
+    "deleteSecret",
+    "showSnack"
+  ],
+  "hooks": ["persistedDataChanged"],
+  "nodeScriptConfig": {
+    "timeout": 120000,
+    "memoryLimit": "128MB"
+  }
+}
