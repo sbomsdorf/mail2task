@@ -3,7 +3,7 @@ import js from '@eslint/js';
 export default [
   js.configs.recommended,
   {
-    files: ['plugin.js', 'index.html'],
+    files: ['plugin.js'],
     languageOptions: {
       ecmaVersion: 2022,
       globals: {
