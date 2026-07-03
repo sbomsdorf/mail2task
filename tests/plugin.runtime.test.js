@@ -138,7 +138,7 @@ describe('handleCommand', () => {
     expect(runtimeA.readStore().command.status).toBe('success');
   });
 
-  it('documents cross-instance race when both instances start from pending in parallel', async () => {
+  it('allows only one execution when two instances race on pending command', async () => {
     const env = createSharedEnvironment(
       makeBaseStore({
         command: {
@@ -157,7 +157,7 @@ describe('handleCommand', () => {
 
     await Promise.all([runtimeA.api.handleCommand(), runtimeB.api.handleCommand()]);
 
-    expect(env.calls.executeNodeScript).toBeGreaterThan(1);
+    expect(env.calls.executeNodeScript).toBe(1);
     expect(runtimeA.readStore().command.status).toBe('success');
   });
 });
