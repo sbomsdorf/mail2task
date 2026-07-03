@@ -19,7 +19,7 @@ Mail2Task is a Super Productivity plugin that continuously monitors IMAP mailbox
 - 📋 **Configurable Metadata** – Choose which email fields to include in task notes (From, To, CC, Subject, Date, Message-ID, etc.)
 - 🛡️ **Security-First** – Read-only access, encrypted error messages, no email modifications
 - 🔒 **Multi-Instance Safe** – Prevents race conditions when running multiple plugin instances
-- ✅ **Full Test Coverage** – 17 comprehensive tests for reliability
+- ✅ **Full Test Coverage** – 19 comprehensive tests for reliability
 
 ## Requirements
 
