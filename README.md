@@ -1,9 +1,9 @@
 # Mail2Task
 
-[![Report bugs](https://img.shields.io/badge/Report%20Bugs-GitHub%20Issues-red?style=for-the-badge)](https://github.com/sbomsdorf/mail2task/issues)
-[![Discuss features](https://img.shields.io/badge/Discuss%20Features-GitHub%20Discussions-blue?style=for-the-badge)](https://github.com/sbomsdorf/mail2task/discussions)
-[![Super Productivity docs](https://img.shields.io/badge/Super%20Productivity-Docs-6f42c1?style=for-the-badge)](https://github.com/johannesjo/super-productivity)
-[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-Support-orange?style=for-the-badge)](https://buymeacoffee.com/sbomsdorf)
+[![CI](https://github.com/sbomsdorf/mail2task/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/sbomsdorf/mail2task/actions/workflows/ci.yml)
+[![GitHub Issues](https://img.shields.io/github/issues/sbomsdorf/mail2task.svg)](https://github.com/sbomsdorf/mail2task/issues)
+[![Super Productivity Docs](https://img.shields.io/badge/Super%20Productivity-Docs-blue.svg)](https://github.com/johannesjo/super-productivity)
+<a href="https://buymeacoffee.com/sbomsdorf" target="_blank" rel="noopener noreferrer"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" /></a>
 
 > Automatically import emails from IMAP mailboxes into [Super Productivity](https://github.com/johannesjo/super-productivity) tasks.
 
