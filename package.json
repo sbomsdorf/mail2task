@@ -1,0 +1,13 @@
+{
+  "name": "mail2task",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Tests and CI for Mail2Task plugin runtime",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.8"
+  }
+}
