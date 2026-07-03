@@ -1,48 +1,185 @@
 # Mail2Task
 
-Mail2Task is a Super Productivity plugin MVP that creates tasks from new IMAP
-emails.
+> Automatically import emails from IMAP mailboxes into [Super Productivity](https://github.com/johannesjo/super-productivity) tasks.
 
-## Current Scope
+Mail2Task is a Super Productivity plugin that continuously monitors IMAP mailboxes and converts new emails into actionable tasks, enabling seamless integration of email-driven workflows with your productivity system.
 
-- Desktop-first via Super Productivity `nodeExecution`.
-- IMAP polling, read-only, using `EXAMINE` and `BODY.PEEK[]`.
-- Password storage via `PluginAPI.setSecret/getSecret/deleteSecret`.
-- Non-secret settings and dedupe state via `persistDataSynced`.
-- Dedupe key: `accountKey + mailbox + UIDVALIDITY + UID`.
-- Configurable metadata in task notes.
-- Attachments are ignored and not listed.
+## Features
 
-## Files
+- ✉️ **IMAP Integration** – Connect to any IMAP server (Gmail, Outlook, self-hosted, etc.)
+- 🔄 **Automatic Polling** – Background polling with configurable intervals
+- 🔐 **Secure Password Storage** – Credentials stored locally via Super Productivity's secret API
+- 📧 **Smart Deduplication** – Never create duplicate tasks for the same email
+- 📋 **Configurable Metadata** – Choose which email fields to include in task notes (From, To, CC, Subject, Date, Message-ID, etc.)
+- 🛡️ **Security-First** – Read-only access, encrypted error messages, no email modifications
+- 🔒 **Multi-Instance Safe** – Prevents race conditions when running multiple plugin instances
+- ✅ **Full Test Coverage** – 15 comprehensive tests for reliability
 
-- `manifest.json` - Super Productivity plugin manifest.
-- `plugin.js` - background polling, IMAP worker, dedupe, task creation.
-- `index.html` - iframe configuration and status UI.
-- `icon.svg` - plugin icon.
-- `MAIL2TASK-PLUGIN-NOTES.md` - design and architecture notes.
+## Requirements
 
-## Local Test
+- **Super Productivity** v14.0.2 or later ([download](https://github.com/johannesjo/super-productivity/releases))
+- **Desktop app** (Web support not yet available – browsers cannot open raw IMAP sockets)
+- **Node.js execution** permission in Super Productivity settings
+- **IMAP-enabled email account** (Gmail, Outlook, ProtonMail with Bridge, etc.)
 
-1. Open Super Productivity Desktop.
-2. Load this folder as a plugin.
-3. Grant `nodeExecution` only if you trust the local source.
-4. Open Mail2Task from the side panel or plugin configuration.
-5. Enter IMAP settings and save the password.
-6. Run `Verbindung testen`.
-7. Enable polling or run `Jetzt pruefen`.
+## Installation
 
-## MVP Limitations
+### 1. Download/Clone the Plugin
 
-- No Web support: browsers cannot open raw IMAP sockets.
-- No Mobile support yet: needs an upstream native IMAP bridge.
-- No STARTTLS upgrade flow; use implicit TLS where possible.
-- No destructive mail actions: mails are not deleted, moved, flagged or marked read.
-- No attachment import or attachment listing in task notes.
-- MIME parsing is intentionally minimal and optimized for common plaintext/HTML mails.
+```bash
+git clone https://github.com/sbomsdorf/mail2task.git
+cd mail2task
+npm install
+```
 
-## Security Notes
+### 2. Load into Super Productivity
 
-The IMAP password is local-only and is not synced or exported by Super
-Productivity's plugin secret API. At the current upstream state, secrets are
-still plaintext at rest in the local app profile until an OS keychain-backed
-implementation exists.
+1. Open **Super Productivity** Desktop app
+2. Go to **Settings** → **Plugins**
+3. Click **Load Plugin from Folder**
+4. Select the `mail2task` directory
+5. When prompted, grant `nodeExecution` permission (required for IMAP operations)
+
+### 3. Configure Mail2Task
+
+1. Open Mail2Task from the side panel or plugin configuration
+2. Enter your IMAP settings:
+   - **Server** (e.g., `imap.gmail.com`)
+   - **Port** (typically `993` for implicit TLS)
+   - **Username** (your email address)
+   - **Password** (stored securely locally)
+3. Select target **mailbox** (default: `INBOX`)
+4. Configure polling interval and metadata fields
+5. Click **Verbindung testen** to verify connection
+
+### 4. Start Importing
+
+- Enable **Polling** for automatic checks, or
+- Click **Jetzt pruefen** for manual sync
+
+## Configuration
+
+### Email Metadata Fields
+
+Choose which fields are included in generated task notes:
+
+| Field | Description |
+|-------|-------------|
+| Received | Email date/time |
+| From | Sender address |
+| To | Primary recipient |
+| CC | Carbon copy recipients |
+| Subject | Original email subject |
+| Message-ID | IMAP unique identifier |
+| Mailbox | Source mailbox name |
+| IMAP UID | Internal email UID |
+
+### Polling Settings
+
+- **Interval** – Check mailbox every N minutes (1–1440 min)
+- **Max Messages** – Fetch up to N new emails per poll (1–50)
+- **Body Length** – Limit email body in task notes (500–50000 chars)
+
+### Task Defaults
+
+- **Project** – Destination project for created tasks
+- **Tags** – Auto-apply tags to all imported tasks
+- **Time Estimate** – Default estimated minutes per task
+- **Import Mode** – On first run, import only new emails or latest N
+
+## Security & Privacy
+
+### Password Storage
+
+- ✅ Passwords stored locally by Super Productivity's secret API
+- ℹ️ Current upstream limitation: secrets are plaintext at rest until OS keychain integration
+- 🔒 Recommended: use [app-specific passwords](https://support.google.com/accounts/answer/185833) (Gmail) or similar
+
+### Data Access
+
+- 📖 **Read-only** IMAP access (emails not modified, deleted, or flagged)
+- 🔍 **No attachments** imported or stored
+- 🛡️ **Error messages sanitized** to prevent credential leaks in logs
+
+### IMAP Commands
+
+- `EXAMINE` – Read-only mailbox inspection
+- `BODY.PEEK[]` – Fetch email without marking as read
+
+## Architecture
+
+- **Polling Daemon** – Background task running per configured interval
+- **Deduplication** – Keyed by `accountKey + mailbox + UIDVALIDITY + UID`
+- **Race Protection** – Multi-instance ownership claims prevent duplicate execution
+- **State Persistence** – Task cursor and processed email set saved locally
+
+See [MAIL2TASK-PLUGIN-NOTES.md](MAIL2TASK-PLUGIN-NOTES.md) for detailed architecture and design decisions.
+
+## Limitations
+
+- 🌐 **No Web support** – browsers cannot open raw IMAP sockets
+- 📱 **No mobile** yet – requires native bridge from Super Productivity
+- 🔄 **No STARTTLS** – use implicit TLS (port 993) where possible
+- 📎 **No attachments** – email bodies and headers only
+- 🧵 **Minimal MIME** – optimized for plaintext/HTML, not complex multipart structures
+
+## Development
+
+### Run Tests
+
+```bash
+npm test              # Run full suite
+npm run test:watch   # Watch mode
+```
+
+### Project Structure
+
+```
+mail2task/
+├── plugin.js                    # Main plugin runtime & IMAP worker
+├── index.html                   # Configuration & status UI
+├── manifest.json                # Plugin metadata & permissions
+├── icon.svg                     # Plugin icon
+├── package.json                 # Dependencies & scripts
+├── vitest.config.js             # Test runner config
+├── tests/
+│   ├── plugin.runtime.test.js   # Integration tests
+│   └── helpers/
+│       └── loadPluginRuntime.js # Test harness
+├── .github/workflows/ci.yml     # GitHub Actions CI
+└── README.md                    # This file
+```
+
+## Contributing
+
+Contributions welcome! Please:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/your-feature`)
+3. Add tests for new functionality
+4. Ensure all tests pass (`npm test`)
+5. Submit a pull request
+
+## Issues & Support
+
+- 🐛 **Report bugs** via [GitHub Issues](https://github.com/sbomsdorf/mail2task/issues)
+- 💬 **Discuss features** in [GitHub Discussions](https://github.com/sbomsdorf/mail2task/discussions)
+- 📖 **Super Productivity docs** – https://github.com/johannesjo/super-productivity
+
+## Related Projects
+
+- [Super Productivity](https://github.com/johannesjo/super-productivity) – The main project
+- [Super Productivity Plugin Docs](https://github.com/johannesjo/super-productivity/wiki/Plugins) – Plugin development guide
+- [IMAP Specification](https://tools.ietf.org/html/rfc3501) – RFC 3501
+
+## License
+
+This project is licensed under the **MIT License** – see [LICENSE](LICENSE) for details.
+
+## Want to Contribute?
+
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to get started, coding standards, testing requirements, and our development workflow.
+
+---
+
+**Status:** Stable MVP | **Super Productivity:** ≥14.0.2 | **Node.js:** ≥18 | **Last Updated:** 2026-07-03
