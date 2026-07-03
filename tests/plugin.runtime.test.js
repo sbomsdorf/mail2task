@@ -46,26 +46,127 @@ function makeBaseStore(overrides) {
 }
 
 describe('sanitizeSensitiveText', () => {
-  it('redacts LOGIN credentials and secret-like key-values', () => {
+  it('redacts LOGIN credentials with quoted username and password', () => {
     const runtime = loadPluginRuntime(makeBaseStore());
 
-    const message = 'LOGIN "alice" "superSecret" token=abc123';
+    const message = 'LOGIN "alice" "superSecret"';
+    const sanitized = runtime.api.sanitizeSensitiveText(message);
+
+    expect(sanitized).toContain('<redacted>');
+    expect(sanitized).not.toContain('alice');
+    expect(sanitized).not.toContain('superSecret');
+  });
+
+  it('redacts LOGIN credentials without quotes', () => {
+    const runtime = loadPluginRuntime(makeBaseStore());
+
+    const message = 'LOGIN alice superSecret';
+    const sanitized = runtime.api.sanitizeSensitiveText(message);
+
+    expect(sanitized).toBe('LOGIN <redacted> <redacted>');
+    expect(sanitized).not.toContain('alice');
+    expect(sanitized).not.toContain('superSecret');
+  });
+
+  it('redacts AUTHENTICATE with mechanism and payload', () => {
+    const runtime = loadPluginRuntime(makeBaseStore());
+
+    const message = 'AUTHENTICATE XOAUTH2 veryLongBlob123';
+    const sanitized = runtime.api.sanitizeSensitiveText(message);
+
+    expect(sanitized).toBe('AUTHENTICATE <redacted>');
+    expect(sanitized).not.toContain('XOAUTH2');
+    expect(sanitized).not.toContain('veryLongBlob123');
+  });
+
+  it('redacts AUTHENTICATE plain with password', () => {
+    const runtime = loadPluginRuntime(makeBaseStore());
+
+    const message = 'AUTHENTICATE PLAIN dGVzdA==';
+    const sanitized = runtime.api.sanitizeSensitiveText(message);
+
+    expect(sanitized).toBe('AUTHENTICATE <redacted>');
+    expect(sanitized).not.toContain('PLAIN');
+    expect(sanitized).not.toContain('dGVzdA==');
+  });
+
+  it('redacts password key-value pairs with colon separator', () => {
+    const runtime = loadPluginRuntime(makeBaseStore());
+
+    const message = 'Error: password: hunter2 failed';
+    const sanitized = runtime.api.sanitizeSensitiveText(message);
+
+    expect(sanitized).toContain('password=<redacted>');
+    expect(sanitized).not.toContain('hunter2');
+  });
+
+  it('redacts pass key-value pairs with equals separator', () => {
+    const runtime = loadPluginRuntime(makeBaseStore());
+
+    const message = 'Config pass=mySecret123';
+    const sanitized = runtime.api.sanitizeSensitiveText(message);
+
+    expect(sanitized).toContain('pass=<redacted>');
+    expect(sanitized).not.toContain('mySecret123');
+  });
+
+  it('redacts secret and token in quoted values', () => {
+    const runtime = loadPluginRuntime(makeBaseStore());
+
+    const message = 'secret="mySecret" token=\'bearerToken123\'';
+    const sanitized = runtime.api.sanitizeSensitiveText(message);
+
+    expect(sanitized).toContain('secret=<redacted>');
+    expect(sanitized).toContain('token=<redacted>');
+    expect(sanitized).not.toContain('mySecret');
+    expect(sanitized).not.toContain('bearerToken123');
+  });
+
+  it('strips line breaks and carriage returns', () => {
+    const runtime = loadPluginRuntime(makeBaseStore());
+
+    const message = 'Line1\nLine2\rLine3';
+    const sanitized = runtime.api.sanitizeSensitiveText(message);
+
+    expect(sanitized).not.toContain('\n');
+    expect(sanitized).not.toContain('\r');
+    expect(sanitized).toContain('Line1');
+    expect(sanitized).toContain('Line2');
+    expect(sanitized).toContain('Line3');
+  });
+
+  it('truncates messages longer than 600 characters', () => {
+    const runtime = loadPluginRuntime(makeBaseStore());
+
+    const longMessage = 'Lorem ipsum '.repeat(100);
+    const sanitized = runtime.api.sanitizeSensitiveText(longMessage);
+
+    expect(sanitized.length).toBeLessThanOrEqual(610); // 600 + " ..."
+    expect(sanitized).toContain('...');
+  });
+
+  it('handles empty and whitespace-only strings', () => {
+    const runtime = loadPluginRuntime(makeBaseStore());
+
+    expect(runtime.api.sanitizeSensitiveText('')).toBe('');
+    expect(runtime.api.sanitizeSensitiveText('   ')).toBe('');
+    expect(runtime.api.sanitizeSensitiveText(null)).toBe('');
+  });
+
+  it('combines multiple redaction patterns in single message', () => {
+    const runtime = loadPluginRuntime(makeBaseStore());
+
+    const message =
+      'LOGIN alice pwd123\nAUTHENTICATE XOAUTH2 token456\nsecret=mySecret';
     const sanitized = runtime.api.sanitizeSensitiveText(message);
 
     expect(sanitized).toContain('LOGIN <redacted> <redacted>');
-    expect(sanitized).toContain('token=<redacted>');
-    expect(sanitized).not.toContain('superSecret');
-    expect(sanitized).not.toContain('abc123');
-  });
-
-  it('redacts AUTHENTICATE payloads and strips line breaks', () => {
-    const runtime = loadPluginRuntime(makeBaseStore());
-
-    const message = 'AUTHENTICATE XOAUTH2 veryLongBlob\npassword: hunter2';
-    const sanitized = runtime.api.sanitizeSensitiveText(message);
-
     expect(sanitized).toContain('AUTHENTICATE <redacted>');
-    expect(sanitized).toContain('password=<redacted>');
+    expect(sanitized).toContain('secret=<redacted>');
+    expect(sanitized).not.toContain('alice');
+    expect(sanitized).not.toContain('pwd123');
+    expect(sanitized).not.toContain('token456');
+    expect(sanitized).not.toContain('mySecret');
     expect(sanitized).not.toContain('\n');
   });
 });
