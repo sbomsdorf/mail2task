@@ -10,6 +10,7 @@ function makeBaseStore(overrides) {
       host: 'imap.example.org',
       port: 993,
       tls: true,
+      starttls: false,
       username: 'alice',
       mailbox: 'INBOX',
       pollIntervalMinutes: 5,
@@ -341,5 +342,34 @@ describe('handleCommand', () => {
 
     expect(env.calls.executeNodeScript).toBe(1);
     expect(runtimeA.readStore().command.status).toBe('success');
+  });
+});
+
+describe('normalizeConfig', () => {
+  it('uses starttls=false by default', () => {
+    const runtime = loadPluginRuntime(makeBaseStore());
+
+    const normalized = runtime.api.normalizeConfig({
+      host: 'imap.example.org',
+      username: 'alice',
+      mailbox: 'INBOX',
+    });
+
+    expect(normalized.starttls).toBe(false);
+  });
+
+  it('keeps explicit starttls=true', () => {
+    const runtime = loadPluginRuntime(makeBaseStore());
+
+    const normalized = runtime.api.normalizeConfig({
+      host: 'imap.example.org',
+      username: 'alice',
+      mailbox: 'INBOX',
+      tls: false,
+      starttls: true,
+    });
+
+    expect(normalized.tls).toBe(false);
+    expect(normalized.starttls).toBe(true);
   });
 });
