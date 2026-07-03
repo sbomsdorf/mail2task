@@ -2,20 +2,40 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function makeSharedStore(initialStore) {
   return {
     value: JSON.stringify(initialStore),
   };
 }
-
-function createPluginApi(sharedStore) {
-  const calls = {
-    executeNodeScript: 0,
-    createTask: 0,
-    snacks: [],
-    warnings: [],
-    errors: [],
+function createSharedEnvironment(initialStore, options = {}) {
+  return {
+    __mail2taskEnv: true,
+    sharedStore: makeSharedStore(initialStore),
+    options,
+    calls: {
+      executeNodeScript: 0,
+      createTask: 0,
+      snacks: [],
+      warnings: [],
+      errors: [],
+    },
   };
+}
+
+function createPluginApi(env) {
+  const calls = env.calls;
+  const sharedStore = env.sharedStore;
+
+  const executeNodeScriptImpl =
+    typeof env.options.executeNodeScriptImpl === 'function'
+      ? env.options.executeNodeScriptImpl
+      : null;
+
+  const persistDelayMs = Number(env.options.persistDelayMs || 0);
 
   const PluginAPI = {
     Hooks: {
@@ -41,6 +61,9 @@ function createPluginApi(sharedStore) {
       return sharedStore.value;
     },
     async persistDataSynced(value) {
+      if (persistDelayMs > 0) {
+        await sleep(persistDelayMs);
+      }
       sharedStore.value = value;
     },
     async getSecret() {
@@ -48,6 +71,9 @@ function createPluginApi(sharedStore) {
     },
     async executeNodeScript(payload) {
       calls.executeNodeScript += 1;
+      if (executeNodeScriptImpl) {
+        return executeNodeScriptImpl(payload, env);
+      }
       const request = payload && payload.args ? payload.args[0] : null;
       if (!request || request.mode === 'status') {
         return {
@@ -80,9 +106,13 @@ function createPluginApi(sharedStore) {
   return { PluginAPI, calls };
 }
 
-function loadPluginRuntime(initialStore) {
-  const sharedStore = makeSharedStore(initialStore);
-  const { PluginAPI, calls } = createPluginApi(sharedStore);
+function loadPluginRuntime(initialStoreOrEnv, options = {}) {
+  const env =
+    initialStoreOrEnv && initialStoreOrEnv.__mail2taskEnv
+      ? initialStoreOrEnv
+      : createSharedEnvironment(initialStoreOrEnv, options);
+
+  const { PluginAPI, calls } = createPluginApi(env);
 
   const pluginPath = path.resolve(__dirname, '..', '..', 'plugin.js');
   const source = fs.readFileSync(pluginPath, 'utf8');
@@ -108,13 +138,15 @@ function loadPluginRuntime(initialStore) {
   return {
     api: context.__mail2taskTest,
     calls,
-    readStore: () => JSON.parse(sharedStore.value),
+    env,
+    readStore: () => JSON.parse(env.sharedStore.value),
     writeRawStore: (store) => {
-      sharedStore.value = JSON.stringify(store);
+      env.sharedStore.value = JSON.stringify(store);
     },
   };
 }
 
 module.exports = {
+  createSharedEnvironment,
   loadPluginRuntime,
 };

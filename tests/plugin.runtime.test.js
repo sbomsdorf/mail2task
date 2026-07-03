@@ -1,4 +1,7 @@
-const { loadPluginRuntime } = require('./helpers/loadPluginRuntime');
+const {
+  createSharedEnvironment,
+  loadPluginRuntime,
+} = require('./helpers/loadPluginRuntime');
 
 function makeBaseStore(overrides) {
   return {
@@ -112,5 +115,49 @@ describe('handleCommand', () => {
 
     expect(runtime.calls.executeNodeScript).toBe(1);
     expect(runtime.readStore().command.status).toBe('success');
+  });
+
+  it('does not rerun command across instances after first one persisted success', async () => {
+    const env = createSharedEnvironment(
+      makeBaseStore({
+        command: {
+          id: 'cmd-3',
+          type: 'testConnection',
+          status: 'pending',
+          createdAt: new Date().toISOString(),
+        },
+      }),
+    );
+    const runtimeA = loadPluginRuntime(env);
+    const runtimeB = loadPluginRuntime(env);
+
+    await runtimeA.api.handleCommand();
+    await runtimeB.api.handleCommand();
+
+    expect(env.calls.executeNodeScript).toBe(1);
+    expect(runtimeA.readStore().command.status).toBe('success');
+  });
+
+  it('documents cross-instance race when both instances start from pending in parallel', async () => {
+    const env = createSharedEnvironment(
+      makeBaseStore({
+        command: {
+          id: 'cmd-4',
+          type: 'testConnection',
+          status: 'pending',
+          createdAt: new Date().toISOString(),
+        },
+      }),
+      {
+        persistDelayMs: 15,
+      },
+    );
+    const runtimeA = loadPluginRuntime(env);
+    const runtimeB = loadPluginRuntime(env);
+
+    await Promise.all([runtimeA.api.handleCommand(), runtimeB.api.handleCommand()]);
+
+    expect(env.calls.executeNodeScript).toBeGreaterThan(1);
+    expect(runtimeA.readStore().command.status).toBe('success');
   });
 });
