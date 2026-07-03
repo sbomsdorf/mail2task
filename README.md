@@ -12,13 +12,14 @@ Mail2Task is a Super Productivity plugin that continuously monitors IMAP mailbox
 ## Features
 
 - ✉️ **IMAP Integration** – Connect to any IMAP server (Gmail, Outlook, self-hosted, etc.)
+- 🔓 **STARTTLS Support** – Optional STARTTLS upgrade for providers on port 143
 - 🔄 **Automatic Polling** – Background polling with configurable intervals
 - 🔐 **Secure Password Storage** – Credentials stored locally via Super Productivity's secret API
 - 📧 **Smart Deduplication** – Never create duplicate tasks for the same email
 - 📋 **Configurable Metadata** – Choose which email fields to include in task notes (From, To, CC, Subject, Date, Message-ID, etc.)
 - 🛡️ **Security-First** – Read-only access, encrypted error messages, no email modifications
 - 🔒 **Multi-Instance Safe** – Prevents race conditions when running multiple plugin instances
-- ✅ **Full Test Coverage** – 15 comprehensive tests for reliability
+- ✅ **Full Test Coverage** – 17 comprehensive tests for reliability
 
 ## Requirements
 
@@ -51,6 +52,7 @@ npm install
 2. Enter your IMAP settings:
    - **Server** (e.g., `imap.gmail.com`)
    - **Port** (typically `993` for implicit TLS)
+   - **STARTTLS** (optional for plaintext connect + upgrade, typically on port `143`)
    - **Username** (your email address)
    - **Password** (stored securely locally)
 3. Select target **mailbox** (default: `INBOX`)
@@ -124,7 +126,6 @@ See [MAIL2TASK-PLUGIN-NOTES.md](MAIL2TASK-PLUGIN-NOTES.md) for detailed architec
 
 - 🌐 **No Web support** – browsers cannot open raw IMAP sockets
 - 📱 **No mobile** yet – requires native bridge from Super Productivity
-- 🔄 **No STARTTLS** – use implicit TLS (port 993) where possible
 - 📎 **No attachments** – email bodies and headers only
 - 🧵 **Minimal MIME** – optimized for plaintext/HTML, not complex multipart structures
 

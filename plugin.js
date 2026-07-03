@@ -22,6 +22,7 @@
     host: '',
     port: 993,
     tls: true,
+    starttls: false,
     username: '',
     mailbox: 'INBOX',
     pollIntervalMinutes: 5,
@@ -104,6 +105,7 @@
     merged.projectId = merged.projectId || null;
     merged.tagIds = Array.isArray(merged.tagIds) ? merged.tagIds.filter(Boolean) : [];
     merged.tls = merged.tls !== false;
+    merged.starttls = merged.starttls === true;
     merged.enabled = merged.enabled === true;
     return merged;
   }
@@ -579,6 +581,7 @@
       host: config.host,
       port: config.port,
       tls: config.tls,
+      starttls: config.starttls,
       username: config.username,
       password,
       mailbox: config.mailbox,
@@ -769,6 +772,17 @@
             this.tagNo = 0;
           }
 
+          setupSocket(socket) {
+            this.socket = socket;
+            this.socket.setEncoding('latin1');
+            this.socket.setTimeout(DEFAULT_TIMEOUT_MS, () => {
+              this.socket.destroy(new Error('IMAP connection timed out'));
+            });
+            this.socket.on('data', (chunk) => {
+              this.buffer += chunk;
+            });
+          }
+
           connect() {
             return new Promise((resolve, reject) => {
               const options = {
@@ -777,18 +791,15 @@
                 servername: this.config.host,
                 rejectUnauthorized: true,
               };
-              const onError = (error) => reject(error);
-              this.socket = this.config.tls
+              const socket = this.config.tls
                 ? tls.connect(options, () => resolve())
                 : net.connect(options, () => resolve());
-              this.socket.setEncoding('latin1');
-              this.socket.setTimeout(DEFAULT_TIMEOUT_MS, () => {
-                this.socket.destroy(new Error('IMAP connection timed out'));
-              });
-              this.socket.once('error', onError);
-              this.socket.on('data', (chunk) => {
-                this.buffer += chunk;
-              });
+              const onError = (error) => reject(error);
+              socket.once('error', onError);
+              this.setupSocket(socket);
+              const stopGuard = () => socket.off('error', onError);
+              socket.once('connect', stopGuard);
+              socket.once('secureConnect', stopGuard);
             }).then(() => this.waitForUntaggedGreeting());
           }
 
@@ -845,6 +856,49 @@
             await this.command(
               'LOGIN ' + quote(this.config.username) + ' ' + quote(this.config.password),
             );
+          }
+
+          async capability() {
+            const response = await this.command('CAPABILITY');
+            return parseCapabilities(response);
+          }
+
+          async enableStartTls() {
+            const capabilities = await this.capability();
+            if (!capabilities.includes('STARTTLS')) {
+              throw new Error(
+                'STARTTLS requested but not supported by server capabilities.',
+              );
+            }
+
+            try {
+              await this.command('STARTTLS');
+            } catch (_error) {
+              throw new Error('STARTTLS handshake command was rejected by IMAP server.');
+            }
+
+            await this.upgradeSocketToTls();
+          }
+
+          upgradeSocketToTls() {
+            return new Promise((resolve, reject) => {
+              const previousSocket = this.socket;
+              const secureSocket = tls.connect(
+                {
+                  socket: previousSocket,
+                  servername: this.config.host,
+                  rejectUnauthorized: true,
+                },
+                () => resolve(),
+              );
+
+              secureSocket.once('error', (error) => {
+                reject(new Error('STARTTLS TLS upgrade failed: ' + sanitizeErrorLine(error.message || String(error))));
+              });
+
+              this.buffer = '';
+              this.setupSocket(secureSocket);
+            });
           }
 
           async examine() {
@@ -915,6 +969,17 @@
 
         function quoteMailbox(value) {
           return quote(value || 'INBOX');
+        }
+
+        function parseCapabilities(response) {
+          const matches = String(response || '').match(/^\*\s+CAPABILITY\s+(.+)$/im);
+          if (!matches) {
+            return [];
+          }
+          return matches[1]
+            .trim()
+            .split(/\s+/)
+            .map((item) => item.toUpperCase());
         }
 
         function parseSelectStatus(response, mailbox) {
@@ -1163,6 +1228,9 @@
           const connection = new ImapConnection(config);
           await connection.connect();
           try {
+            if (!config.tls && config.starttls) {
+              await connection.enableStartTls();
+            }
             await connection.login();
             const status = await connection.examine();
             if (!status.uidValidity) {

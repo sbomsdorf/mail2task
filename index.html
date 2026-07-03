@@ -240,6 +240,13 @@
           />
           TLS verwenden
         </label>
+        <label class="check-row">
+          <input
+            id="starttls"
+            type="checkbox"
+          />
+          STARTTLS Upgrade (typisch Port 143)
+        </label>
         <div class="grid">
           <label>
             Passwort / App-Passwort
@@ -462,6 +469,7 @@
           host: '',
           port: 993,
           tls: true,
+          starttls: false,
           username: '',
           mailbox: 'INBOX',
           pollIntervalMinutes: 5,
@@ -483,6 +491,7 @@
           host: document.getElementById('host'),
           port: document.getElementById('port'),
           tls: document.getElementById('tls'),
+          starttls: document.getElementById('starttls'),
           username: document.getElementById('username'),
           mailbox: document.getElementById('mailbox'),
           password: document.getElementById('password'),
@@ -563,6 +572,7 @@
             ? merged.tagIds.filter(Boolean)
             : [];
           merged.tls = merged.tls !== false;
+          merged.starttls = merged.starttls === true;
           merged.enabled = merged.enabled === true;
           return merged;
         }
@@ -614,6 +624,7 @@
           el.host.value = config.host;
           el.port.value = config.port;
           el.tls.checked = config.tls;
+          el.starttls.checked = config.starttls;
           el.username.value = config.username;
           el.mailbox.value = config.mailbox;
           el.pollIntervalMinutes.value = config.pollIntervalMinutes;
@@ -644,6 +655,7 @@
             host: el.host.value,
             port: el.port.value,
             tls: el.tls.checked,
+            starttls: el.starttls.checked,
             username: el.username.value,
             mailbox: el.mailbox.value,
             pollIntervalMinutes: el.pollIntervalMinutes.value,
