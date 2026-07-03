@@ -8,6 +8,9 @@
     "test:watch": "vitest",
     "lint": "eslint plugin.js tests/"
   },
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "eslint": "^10.6.0",
