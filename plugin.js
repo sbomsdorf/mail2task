@@ -47,14 +47,20 @@
   }
 
   function sanitizeSensitiveText(value) {
-    return String(value || '')
+    const sanitized = String(value || '')
+      .replace(/[\r\n]+/g, ' ')
       .replace(
         /LOGIN\s+"(?:\\.|[^"])*"\s+"(?:\\.|[^"])*"/gi,
         'LOGIN "<redacted>" "<redacted>"',
       )
       .replace(/LOGIN\s+\S+\s+\S+/gi, 'LOGIN <redacted> <redacted>')
-      .replace(/[\r\n]+/g, ' ')
+      .replace(/AUTHENTICATE\s+\S+(\s+\S+)?/gi, 'AUTHENTICATE <redacted>')
+      .replace(
+        /(password|pass|secret|token)\s*[:=]\s*("(?:\\.|[^"])*"|'(?:\\.|[^'])*'|\S+)/gi,
+        '$1=<redacted>',
+      )
       .trim();
+    return sanitized.length > 600 ? `${sanitized.slice(0, 600)} ...` : sanitized;
   }
 
   function parseJson(value, fallback) {
@@ -172,7 +178,11 @@
     });
     if (!result || !result.success) {
       const error = result && result.error ? result.error : 'Unknown nodeExecution error';
-      throw new Error(typeof error === 'string' ? error : error.message || String(error));
+      throw new Error(
+        sanitizeSensitiveText(
+          typeof error === 'string' ? error : error.message || String(error),
+        ),
+      );
     }
     return result.result;
   }
@@ -769,12 +779,17 @@
 
         function sanitizeErrorLine(value) {
           return String(value || '')
+            .replace(/[\r\n]+/g, ' ')
             .replace(
               /LOGIN\s+"(?:\\.|[^"])*"\s+"(?:\\.|[^"])*"/gi,
               'LOGIN "<redacted>" "<redacted>"',
             )
             .replace(/LOGIN\s+\S+\s+\S+/gi, 'LOGIN <redacted> <redacted>')
-            .replace(/[\r\n]+/g, ' ')
+            .replace(/AUTHENTICATE\s+\S+(\s+\S+)?/gi, 'AUTHENTICATE <redacted>')
+            .replace(
+              /(password|pass|secret|token)\s*[:=]\s*("(?:\\.|[^"])*"|'(?:\\.|[^'])*'|\S+)/gi,
+              '$1=<redacted>',
+            )
             .trim();
         }
 
