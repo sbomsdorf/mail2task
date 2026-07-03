@@ -3,7 +3,7 @@
 [![CI](https://github.com/sbomsdorf/mail2task/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/sbomsdorf/mail2task/actions/workflows/ci.yml)
 [![GitHub Issues](https://img.shields.io/github/issues/sbomsdorf/mail2task.svg)](https://github.com/sbomsdorf/mail2task/issues)
 [![Super Productivity Docs](https://img.shields.io/badge/Super%20Productivity-Docs-blue.svg)](https://github.com/johannesjo/super-productivity)
-<a href="https://buymeacoffee.com/sbomsdorf" target="_blank" rel="noopener noreferrer"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" /></a>
+<a href="https://buymeacoffee.com/sbomsdorf" target="_blank" rel="noopener noreferrer"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 20px !important;width: 217px !important;" /></a>
 
 > Automatically import emails from IMAP mailboxes into [Super Productivity](https://github.com/johannesjo/super-productivity) tasks.
 
