@@ -782,16 +782,16 @@
           lines.push('Mailbox: ' + (store.config.mailbox || 'INBOX'));
           lines.push('Letzter Lauf: ' + formatDate(state.lastPollAt));
           lines.push('Letzter Erfolg: ' + formatDate(state.lastSuccessAt));
-          lines.push('Letzter Fehler: ' + (state.lastError || '-'));
+          lines.push('Letzter Fehler: ' + (state.lastError ? readableError(state.lastError) : '-'));
           if (state.lastResult) {
             lines.push('');
             lines.push('Letztes Ergebnis:');
-            lines.push(JSON.stringify(state.lastResult, null, 2));
+            lines.push(safeStringify(state.lastResult));
           }
           if (command) {
             lines.push('');
             lines.push('Kommando:');
-            lines.push(JSON.stringify(command, null, 2));
+            lines.push(safeStringify(command));
           }
           lines.push('');
           lines.push('Dedupe-Records: ' + Object.keys(state.processed).length);
@@ -820,8 +820,36 @@
           return date.toLocaleString();
         }
 
+        function sanitizeSensitiveText(value) {
+          const sanitized = String(value || '')
+            .replace(/[\r\n]+/g, ' ')
+            .replace(
+              /LOGIN\s+"(?:\\.|[^"])*"\s+"(?:\\.|[^"])*"/gi,
+              'LOGIN "<redacted>" "<redacted>"',
+            )
+            .replace(/LOGIN\s+\S+\s+\S+/gi, 'LOGIN <redacted> <redacted>')
+            .replace(/AUTHENTICATE\s+\S+(\s+\S+)?/gi, 'AUTHENTICATE <redacted>')
+            .replace(
+              /(password|pass|secret|token)\s*[:=]\s*("(?:\\.|[^"])*"|'(?:\\.|[^'])*'|\S+)/gi,
+              '$1=<redacted>',
+            )
+            .trim();
+          return sanitized.length > 600 ? `${sanitized.slice(0, 600)} ...` : sanitized;
+        }
+
+        function safeStringify(value) {
+          return JSON.stringify(
+            value,
+            (_key, item) =>
+              typeof item === 'string' ? sanitizeSensitiveText(item) : item,
+            2,
+          );
+        }
+
         function readableError(error) {
-          return error && error.message ? error.message : String(error || 'Unknown error');
+          return sanitizeSensitiveText(
+            error && error.message ? error.message : String(error || 'Unknown error'),
+          );
         }
 
         function snack(msg, type) {
