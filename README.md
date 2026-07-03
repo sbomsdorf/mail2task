@@ -1,13 +1,13 @@
 # Mail2Task
 
-> Automatically import emails from IMAP mailboxes into [Super Productivity](https://github.com/johannesjo/super-productivity) tasks.
-
-Mail2Task is a Super Productivity plugin that continuously monitors IMAP mailboxes and converts new emails into actionable tasks, enabling seamless integration of email-driven workflows with your productivity system.
-
 [![Report bugs](https://img.shields.io/badge/Report%20Bugs-GitHub%20Issues-red?style=for-the-badge)](https://github.com/sbomsdorf/mail2task/issues)
 [![Discuss features](https://img.shields.io/badge/Discuss%20Features-GitHub%20Discussions-blue?style=for-the-badge)](https://github.com/sbomsdorf/mail2task/discussions)
 [![Super Productivity docs](https://img.shields.io/badge/Super%20Productivity-Docs-6f42c1?style=for-the-badge)](https://github.com/johannesjo/super-productivity)
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-Support-orange?style=for-the-badge)](https://buymeacoffee.com/sbomsdorf)
+
+> Automatically import emails from IMAP mailboxes into [Super Productivity](https://github.com/johannesjo/super-productivity) tasks.
+
+Mail2Task is a Super Productivity plugin that continuously monitors IMAP mailboxes and converts new emails into actionable tasks, enabling seamless integration of email-driven workflows with your productivity system.
 
 ## Features
 
