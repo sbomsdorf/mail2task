@@ -46,6 +46,10 @@
     return new Date().toISOString();
   }
 
+  function randomToken() {
+    return Math.random().toString(36).slice(2, 10);
+  }
+
   function sanitizeSensitiveText(value) {
     const sanitized = String(value || '')
       .replace(/[\r\n]+/g, ' ')
@@ -138,6 +142,43 @@
 
   async function saveStore(store) {
     await PluginAPI.persistDataSynced(JSON.stringify(normalizeStore(store)));
+  }
+
+  async function sleepMs(ms) {
+    await new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  async function claimPendingCommand(commandId) {
+    const startedAt = nowIso();
+    const runToken = `${startedAt}:${randomToken()}`;
+    const latest = await loadStore();
+    if (
+      !latest.command ||
+      latest.command.id !== commandId ||
+      latest.command.status !== 'pending'
+    ) {
+      return null;
+    }
+
+    latest.command.status = 'running';
+    latest.command.startedAt = startedAt;
+    latest.command.runToken = runToken;
+    await saveStore(latest);
+
+    // Give competing instances a short window to publish their claim, then verify ownership.
+    await sleepMs(35);
+    const confirmed = await loadStore();
+    if (
+      !confirmed.command ||
+      confirmed.command.id !== commandId ||
+      confirmed.command.status !== 'running' ||
+      confirmed.command.startedAt !== startedAt ||
+      confirmed.command.runToken !== runToken
+    ) {
+      return null;
+    }
+
+    return { startedAt, runToken };
   }
 
   function configReady(config) {
@@ -532,10 +573,12 @@
       return;
     }
     activeCommandId = command.id;
+    let claim = null;
     try {
-      command.status = 'running';
-      command.startedAt = nowIso();
-      await saveStore(store);
+      claim = await claimPendingCommand(command.id);
+      if (!claim) {
+        return;
+      }
 
       let result;
       if (command.type === 'testConnection') {
@@ -547,10 +590,15 @@
       }
 
       store = await loadStore();
-      if (store.command && store.command.id === command.id) {
+      if (
+        store.command &&
+        store.command.id === command.id &&
+        store.command.runToken === claim.runToken
+      ) {
         store.command.status = 'success';
         store.command.finishedAt = nowIso();
         store.command.result = summarizeCommandResult(command.type, result);
+        delete store.command.runToken;
         cleanupCommand(store);
         await saveStore(store);
       }
@@ -563,10 +611,16 @@
       });
     } catch (error) {
       store = await loadStore();
-      if (store.command && store.command.id === command.id) {
+      if (
+        claim &&
+        store.command &&
+        store.command.id === command.id &&
+        store.command.runToken === claim.runToken
+      ) {
         store.command.status = 'error';
         store.command.finishedAt = nowIso();
         store.command.error = readableError(error);
+        delete store.command.runToken;
         cleanupCommand(store);
         await saveStore(store);
       }
