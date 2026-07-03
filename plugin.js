@@ -73,7 +73,7 @@
     }
     try {
       return JSON.parse(value);
-    } catch (_error) {
+    } catch {
       return clone(fallback);
     }
   }
