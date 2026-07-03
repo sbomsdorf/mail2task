@@ -5,9 +5,12 @@
   "description": "Tests and CI for Mail2Task plugin runtime",
   "scripts": {
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "lint": "eslint plugin.js tests/"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.6.0",
     "vitest": "^2.1.8"
   }
 }
