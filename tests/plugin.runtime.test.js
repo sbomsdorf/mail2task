@@ -171,6 +171,87 @@ describe('sanitizeSensitiveText', () => {
   });
 });
 
+describe('pollNow', () => {
+  it('lets only one instance actually poll a given account at a time', async () => {
+    let fetchCallCount = 0;
+    const env = createSharedEnvironment(
+      makeBaseStore({
+        config: {
+          ...makeBaseStore().config,
+          firstRunMode: 'latestN',
+        },
+      }),
+      {
+        persistDelayMs: 15,
+        executeNodeScriptImpl: (payload) => {
+          const request = payload.args[0];
+          if (request.mode === 'status') {
+            return {
+              success: true,
+              result: { mailbox: 'INBOX', exists: 2, uidValidity: 42, uidNext: 8 },
+            };
+          }
+          fetchCallCount += 1;
+          const uid = fetchCallCount === 1 ? 6 : 7;
+          return {
+            success: true,
+            result: {
+              mailbox: 'INBOX',
+              uidValidity: 42,
+              messages: [
+                {
+                  uid,
+                  subject: `Message ${uid}`,
+                  from: 'sender@example.com',
+                  date: new Date().toISOString(),
+                },
+              ],
+            },
+          };
+        },
+      },
+    );
+    const runtimeA = loadPluginRuntime(env);
+    const runtimeB = loadPluginRuntime(env);
+
+    const [resultA, resultB] = await Promise.all([
+      runtimeA.api.pollNow('manual'),
+      runtimeB.api.pollNow('manual'),
+    ]);
+
+    const results = [resultA, resultB];
+    const skipped = results.filter((result) => result.skipped);
+    const completed = results.filter((result) => !result.skipped);
+    expect(skipped).toHaveLength(1);
+    expect(skipped[0].reason).toBe('already-running-elsewhere');
+    expect(completed).toHaveLength(1);
+
+    const store = runtimeA.readStore();
+    const processedEntries = Object.values(store.state.processed);
+    expect(processedEntries).toHaveLength(1);
+    expect(env.calls.addTask).toBe(1);
+    expect(store.state.activePoll).toBeNull();
+  });
+
+  it('lets a later poll proceed once the previous claim is released', async () => {
+    const env = createSharedEnvironment(
+      makeBaseStore({
+        config: {
+          ...makeBaseStore().config,
+          firstRunMode: 'latestN',
+        },
+      }),
+    );
+    const runtime = loadPluginRuntime(env);
+
+    const first = await runtime.api.pollNow('manual');
+    const second = await runtime.api.pollNow('manual');
+
+    expect(first.skipped).toBeFalsy();
+    expect(second.skipped).toBeFalsy();
+  });
+});
+
 describe('handleCommand', () => {
   it('executes pending testConnection command and persists success result', async () => {
     const runtime = loadPluginRuntime(

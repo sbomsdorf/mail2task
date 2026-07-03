@@ -18,7 +18,7 @@ function createSharedEnvironment(initialStore, options = {}) {
     options,
     calls: {
       executeNodeScript: 0,
-      createTask: 0,
+      addTask: 0,
       snacks: [],
       warnings: [],
       errors: [],
@@ -97,8 +97,8 @@ function createPluginApi(env) {
         },
       };
     },
-    async createTask() {
-      calls.createTask += 1;
+    async addTask() {
+      calls.addTask += 1;
       return { id: 'task-id' };
     },
   };
@@ -118,7 +118,7 @@ function loadPluginRuntime(initialStoreOrEnv, options = {}) {
   const source = fs.readFileSync(pluginPath, 'utf8');
   const instrumented = source.replace(
     /\}\)\(\);\s*$/,
-    "\n  globalThis.__mail2taskTest = {\n    sanitizeSensitiveText,\n    readableError,\n    normalizeConfig,\n    normalizeStore,\n    handleCommand,\n    loadStore,\n  };\n})();\n",
+    "\n  globalThis.__mail2taskTest = {\n    sanitizeSensitiveText,\n    readableError,\n    normalizeConfig,\n    normalizeStore,\n    handleCommand,\n    loadStore,\n    pollNow,\n  };\n})();\n",
   );
 
   const context = {

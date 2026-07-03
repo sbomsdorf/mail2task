@@ -4,6 +4,7 @@
   const SECRET_KEY = 'imapPassword';
   const MAX_PROCESSED_RECORDS = 2000;
   const COMMAND_STATUS_TTL_MS = 24 * 60 * 60 * 1000;
+  const POLL_CLAIM_TTL_MS = 5 * 60 * 1000;
 
   const DEFAULT_METADATA_FIELDS = {
     received: true,
@@ -121,6 +122,8 @@
         lastErrorAt: state.lastErrorAt || null,
         lastError: state.lastError || null,
         lastResult: state.lastResult || null,
+        activePoll:
+          state.activePoll && typeof state.activePoll === 'object' ? state.activePoll : null,
       },
       command:
         source.command && typeof source.command === 'object' ? source.command : null,
@@ -142,6 +145,13 @@
 
   async function saveStore(store) {
     await PluginAPI.persistDataSynced(JSON.stringify(normalizeStore(store)));
+  }
+
+  async function updateStore(mutator) {
+    const latest = await loadStore();
+    mutator(latest);
+    await saveStore(latest);
+    return latest;
   }
 
   async function sleepMs(ms) {
@@ -179,6 +189,46 @@
     }
 
     return { startedAt, runToken };
+  }
+
+  function isPollClaimActive(activePoll, key) {
+    if (!activePoll || activePoll.key !== key) {
+      return false;
+    }
+    const startedAt = new Date(activePoll.startedAt).getTime();
+    return Number.isFinite(startedAt) && Date.now() - startedAt < POLL_CLAIM_TTL_MS;
+  }
+
+  async function claimPoll(key) {
+    const startedAt = nowIso();
+    const runToken = `${startedAt}:${randomToken()}`;
+    const latest = await loadStore();
+    if (isPollClaimActive(latest.state.activePoll, key)) {
+      return null;
+    }
+
+    latest.state.activePoll = { key, startedAt, runToken };
+    await saveStore(latest);
+
+    // Give competing instances a short window to publish their claim, then verify ownership.
+    await sleepMs(35);
+    const confirmed = await loadStore();
+    if (
+      !confirmed.state.activePoll ||
+      confirmed.state.activePoll.key !== key ||
+      confirmed.state.activePoll.startedAt !== startedAt ||
+      confirmed.state.activePoll.runToken !== runToken
+    ) {
+      return null;
+    }
+
+    return { startedAt, runToken };
+  }
+
+  function releasePollClaim(latest, claim) {
+    if (claim && latest.state.activePoll && latest.state.activePoll.runToken === claim.runToken) {
+      latest.state.activePoll = null;
+    }
   }
 
   function configReady(config) {
@@ -270,12 +320,17 @@
     isPolling = true;
     let store = await loadStore();
     const startedAt = nowIso();
+    let claim = null;
     try {
       const config = normalizeConfig(store.config);
       if (reason === 'timer' && !config.enabled) {
         return { skipped: true, reason: 'disabled' };
       }
       assertRunnableConfig(config);
+      claim = await claimPoll(accountKey(config));
+      if (!claim) {
+        return { skipped: true, reason: 'already-running-elsewhere' };
+      }
       const password = await getPassword();
       const status = await runImapRequest({
         mode: 'status',
@@ -340,22 +395,33 @@
         uidValidity: status.uidValidity,
         at: nowIso(),
       };
-      await saveStore(store);
+      await updateStore((latest) => {
+        latest.state.cursors = { ...latest.state.cursors, ...store.state.cursors };
+        latest.state.processed = { ...latest.state.processed, ...store.state.processed };
+        latest.state.lastPollAt = store.state.lastPollAt;
+        latest.state.lastSuccessAt = store.state.lastSuccessAt;
+        latest.state.lastErrorAt = store.state.lastErrorAt;
+        latest.state.lastError = store.state.lastError;
+        latest.state.lastResult = store.state.lastResult;
+        releasePollClaim(latest, claim);
+      });
       return store.state.lastResult;
     } catch (error) {
-      store = await loadStore();
-      store.state.lastPollAt = startedAt;
-      store.state.lastErrorAt = nowIso();
-      store.state.lastError = readableError(error);
-      store.state.lastResult = {
-        reason,
-        created: 0,
-        skipped: 0,
-        fetched: 0,
-        error: readableError(error),
-        at: nowIso(),
-      };
-      await saveStore(store);
+      const safeError = readableError(error);
+      await updateStore((latest) => {
+        latest.state.lastPollAt = startedAt;
+        latest.state.lastErrorAt = nowIso();
+        latest.state.lastError = safeError;
+        latest.state.lastResult = {
+          reason,
+          created: 0,
+          skipped: 0,
+          fetched: 0,
+          error: safeError,
+          at: nowIso(),
+        };
+        releasePollClaim(latest, claim);
+      });
       throw error;
     } finally {
       isPolling = false;
