@@ -134,6 +134,13 @@
     await PluginAPI.persistDataSynced(JSON.stringify(normalizeStore(store)));
   }
 
+  async function updateStore(mutator) {
+    const latest = await loadStore();
+    mutator(latest);
+    await saveStore(latest);
+    return latest;
+  }
+
   function configReady(config) {
     return Boolean(config.host && config.username && config.mailbox);
   }
@@ -289,22 +296,31 @@
         uidValidity: status.uidValidity,
         at: nowIso(),
       };
-      await saveStore(store);
+      await updateStore((latest) => {
+        latest.state.cursors = store.state.cursors;
+        latest.state.processed = store.state.processed;
+        latest.state.lastPollAt = store.state.lastPollAt;
+        latest.state.lastSuccessAt = store.state.lastSuccessAt;
+        latest.state.lastErrorAt = store.state.lastErrorAt;
+        latest.state.lastError = store.state.lastError;
+        latest.state.lastResult = store.state.lastResult;
+      });
       return store.state.lastResult;
     } catch (error) {
-      store = await loadStore();
-      store.state.lastPollAt = startedAt;
-      store.state.lastErrorAt = nowIso();
-      store.state.lastError = readableError(error);
-      store.state.lastResult = {
-        reason,
-        created: 0,
-        skipped: 0,
-        fetched: 0,
-        error: readableError(error),
-        at: nowIso(),
-      };
-      await saveStore(store);
+      const safeError = readableError(error);
+      await updateStore((latest) => {
+        latest.state.lastPollAt = startedAt;
+        latest.state.lastErrorAt = nowIso();
+        latest.state.lastError = safeError;
+        latest.state.lastResult = {
+          reason,
+          created: 0,
+          skipped: 0,
+          fetched: 0,
+          error: safeError,
+          at: nowIso(),
+        };
+      });
       throw error;
     } finally {
       isPolling = false;
@@ -523,9 +539,20 @@
     }
     activeCommandId = command.id;
     try {
-      command.status = 'running';
-      command.startedAt = nowIso();
-      await saveStore(store);
+      const started = nowIso();
+      const markedRunning = await updateStore((latest) => {
+        if (
+          latest.command &&
+          latest.command.id === command.id &&
+          latest.command.status === 'pending'
+        ) {
+          latest.command.status = 'running';
+          latest.command.startedAt = started;
+        }
+      });
+      if (!markedRunning.command || markedRunning.command.id !== command.id) {
+        return;
+      }
 
       let result;
       if (command.type === 'testConnection') {
@@ -536,14 +563,14 @@
         throw new Error(`Unknown command: ${command.type}`);
       }
 
-      store = await loadStore();
-      if (store.command && store.command.id === command.id) {
-        store.command.status = 'success';
-        store.command.finishedAt = nowIso();
-        store.command.result = summarizeCommandResult(command.type, result);
-        cleanupCommand(store);
-        await saveStore(store);
-      }
+      await updateStore((latest) => {
+        if (latest.command && latest.command.id === command.id) {
+          latest.command.status = 'success';
+          latest.command.finishedAt = nowIso();
+          latest.command.result = summarizeCommandResult(command.type, result);
+          cleanupCommand(latest);
+        }
+      });
       PluginAPI.showSnack({
         msg:
           command.type === 'testConnection'
@@ -552,16 +579,17 @@
         type: 'SUCCESS',
       });
     } catch (error) {
-      store = await loadStore();
-      if (store.command && store.command.id === command.id) {
-        store.command.status = 'error';
-        store.command.finishedAt = nowIso();
-        store.command.error = readableError(error);
-        cleanupCommand(store);
-        await saveStore(store);
-      }
+      const safeError = readableError(error);
+      await updateStore((latest) => {
+        if (latest.command && latest.command.id === command.id) {
+          latest.command.status = 'error';
+          latest.command.finishedAt = nowIso();
+          latest.command.error = safeError;
+          cleanupCommand(latest);
+        }
+      });
       PluginAPI.showSnack({
-        msg: `Mail2Task: ${readableError(error)}`,
+        msg: `Mail2Task: ${safeError}`,
         type: 'ERROR',
       });
     } finally {
